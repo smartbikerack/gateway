@@ -36,6 +36,25 @@ def updateUser(current, userID):
     mydb["users"].update_one(query, change)
     return True
 
+def updateParking(used, parking):
+    query = {"number" : parking}
+    parking = mydb["parking"].find_one(query)
+    print(parking)
+    spotsUsed = parking["spotsOccupied"]
+    print(spotsUsed)
+    if used:
+        spotsUsed+=1
+    else:
+        spotsUsed-=1
+    print(spotsUsed)
+    if (0 <= spotsUsed) and (spotsUsed <= parking["spots"]):
+        print("sfdjlk")
+
+        change = {"$set" : {"spotsOccupied" :  spotsUsed}}
+        mydb["parking"].update_one(query, change)
+        return True
+    else:
+        return False
 
 def useSpot(user, spot):
     col = mydb["spot"]
@@ -60,6 +79,7 @@ def useSpot(user, spot):
         occupied = {"$set" : {"occupied" : True, "occupiedBy": userNumber["number"], "occupiedSince": dateName}}
         col.update_one(query,occupied)
         updateUser(True, user)
+        updateParking(True, park["parking"])
         print("Parking used")
         return True
     return False
@@ -93,6 +113,7 @@ def releaseSpot(user, spot):
         cost = 0.001 * timePassed.total_seconds()
         mydb["uses"].insert_one({"user" : park["occupiedBy"], "start" : park["occupiedSince"],  "end" : dateName, "cost" : cost})
         updateUser(False, user)
+        updateParking(False, park["parking"])
         print("Spot released")
         return True
     return False
@@ -168,12 +189,14 @@ def main():
             for s in SPOTS:
                 if s == d.addr:
                     #threading.Thread(target = newPetition, args=(s)).start()
+                    newPetition(s)
                     #os.system("python3 ble_connect.py")
+                    """
                     try:
                         newPetition(s)
                     except Exception as e:
                         print(e)
-
+                    """
 
 if __name__ == "__main__":
     main()
