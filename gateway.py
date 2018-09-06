@@ -67,7 +67,7 @@ def useSpot(user, spot):
         print("User not valid")
         return False
 
-    if userCurrent == True:
+    if userCurrent == True and park["occupiedBy"] != userNumber["number"]:
         print("User already using a spot")
         return False
 
@@ -85,35 +85,36 @@ def useSpot(user, spot):
     return False
 
 def releaseSpot(user, spot):
-    query = {"number": int(spot)}
+    query = {"number": int(spot), "parking": PARKING_NUMBER}
     col = mydb["spot"]
-    park = col.find_one(query)
-    print(park)
-    print("User {} trying to release spot {} on parking {}".format(user, spot, 1))
+    spotInfo = col.find_one(query)
+    print(spotInfo)
+    print("User {} trying to release spot {} on parking {}".format(user, spot, PARKING_NUMBER))
     userNumber, userStatus, userCurrent = verifyUser(user)
     if userStatus == False:
         print("User not valid")
         return False
 
     if userCurrent == False:
-        print("User already using a spot")
+        print("User not using any spot")
         return False
 
-    if park["status"] != "ok":
+    if spotInfo["status"] == "down":
         return False
 
-    if park["occupied"] == True and park["occupiedBy"] == userNumber["number"]:
+    if spotInfo["occupied"] == True and spotInfo["occupiedBy"] == userNumber["number"]:
+        park = mydb["parking"].find_one({"number": PARKING_NUMBER})
         now = datetime.datetime.now()
         dateName = now.strftime("%Y-%m-%d-%H-%M-%S")
         free = {"$set" : {"occupied" : False, "occupiedBy": None, "occupiedSince": None}}
-        col.update_one(query, free)
-        then = datetime.datetime.strptime(park["occupiedSince"], "%Y-%m-%d-%H-%M-%S")
+        mydb["spot"].update_one(query, free)
+        then = datetime.datetime.strptime(spot["occupiedSince"], "%Y-%m-%d-%H-%M-%S")
         timePassed = now - then
         print(str(timePassed.total_seconds()))
         cost = 0.001 * timePassed.total_seconds()
-        mydb["uses"].insert_one({"user" : park["occupiedBy"], "start" : park["occupiedSince"],  "end" : dateName, "cost" : cost})
+        mydb["uses"].insert_one({"user" : spotInfo["occupiedBy"], "start" : spotInfo["occupiedSince"],  "end" : dateName, "cost" : cost, "parking" : park["place"], "duration" : timePassed.total_seconds()})
         updateUser(False, user)
-        updateParking(False, park["parking"])
+        updateParking(False, PARKING_NUMBER)
         print("Spot released")
         return True
     return False
