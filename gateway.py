@@ -41,15 +41,11 @@ def updateParking(used, parking):
     parking = mydb["parking"].find_one(query)
     print(parking)
     spotsUsed = parking["spotsOccupied"]
-    print(spotsUsed)
     if used:
         spotsUsed+=1
     else:
         spotsUsed-=1
-    print(spotsUsed)
     if (0 <= spotsUsed) and (spotsUsed <= parking["spots"]):
-        print("sfdjlk")
-
         change = {"$set" : {"spotsOccupied" :  spotsUsed}}
         mydb["parking"].update_one(query, change)
         return True
@@ -73,13 +69,14 @@ def useSpot(user, spot):
 
 
 
-    if park["occupied"] == False:
+    if park["occupied"] == False or park["occupiedBy"] == userNumber["number"]:
         now = datetime.datetime.now()
         dateName = now.strftime("%Y-%m-%d-%H-%M-%S")
         occupied = {"$set" : {"occupied" : True, "occupiedBy": userNumber["number"], "occupiedSince": dateName}}
         col.update_one(query,occupied)
         updateUser(True, user)
-        updateParking(True, park["parking"])
+        if park["occupied"] == False:
+            updateParking(True,PARKING_NUMBER)
         print("Parking used")
         return True
     return False
@@ -108,7 +105,7 @@ def releaseSpot(user, spot):
         dateName = now.strftime("%Y-%m-%d-%H-%M-%S")
         free = {"$set" : {"occupied" : False, "occupiedBy": None, "occupiedSince": None}}
         mydb["spot"].update_one(query, free)
-        then = datetime.datetime.strptime(spot["occupiedSince"], "%Y-%m-%d-%H-%M-%S")
+        then = datetime.datetime.strptime(spotInfo["occupiedSince"], "%Y-%m-%d-%H-%M-%S")
         timePassed = now - then
         print(str(timePassed.total_seconds()))
         cost = 0.001 * timePassed.total_seconds()
