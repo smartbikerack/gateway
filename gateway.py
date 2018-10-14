@@ -23,12 +23,14 @@ mydb = myclient["smartbikerack"]
 def verifyUser(userID):
     print(userID)
     query = {"uuid" : userID}
-    user = mydb["users"].find_one(query)
+    user = mydb["users"].find_one(query, {"ObjectID" : 0, "password" : 0, "salt" : 0})
+    if user == None:
+        return {"user" : "False"}, False, False
     print(user)
     if user["status"] == "ok" and user["active"] == True:
         return user, True, user["current"]
     else:
-        return {"user" :  "False"}, False
+        return {"user" :  "False"}, False, False
 
 def updateUser(current, userID):
     query = {"uuid" : userID}
@@ -114,6 +116,8 @@ def releaseSpot(user, spot):
         updateParking(False, PARKING_NUMBER)
         print("Spot released")
         return True
+    else:
+        print("User trying to use an unauthorised spot")
     return False
 
 
@@ -148,8 +152,8 @@ def newPetition(device):
     print(user_name)
     occupied_ble = p.getCharacteristics(uuid=OCCUPIED_UUID)[0]
     occupied = int(occupied_ble.read())
-    print(occupied)
     if occupied == 1:
+        print("This spot is occupied")
         release_spot = releaseSpot(user_name, 1)
         if release_spot:
             status.write(b'1')
@@ -158,6 +162,7 @@ def newPetition(device):
             status.write(b'3')
             c.write(b'1')
     elif occupied == 0:
+        print("This spot is free")
         use_spot = useSpot(user_name, 1)
         if use_spot:
             status.write(b'1')
@@ -170,6 +175,7 @@ def newPetition(device):
 
 
     p.disconnect()
+    sleep(10)
     """
     print("Update values")
     status.write(b'1')
@@ -187,14 +193,13 @@ def main():
             for s in SPOTS:
                 if s == d.addr:
                     #threading.Thread(target = newPetition, args=(s)).start()
-                    newPetition(s)
+                    #newPetition(s)
                     #os.system("python3 ble_connect.py")
-                    """
+
                     try:
                         newPetition(s)
                     except Exception as e:
                         print(e)
-                    """
 
 if __name__ == "__main__":
     main()
